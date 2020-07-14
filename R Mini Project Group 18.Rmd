@@ -1,0 +1,317 @@
+---
+title: "Statistical Report of Food Association’s 2014 World Cup"
+author: "Karthikeyan Senthil Kumar, Karthick Pandi, Nishant Kumar, Marcio Antonio Cerqueira Lopes Filho"
+
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## {.tabset}
+
+### Introduction
+Food_world_cup is the dataset which can be imported by loading the package FiveThirtyEight.It includes 32 country cuisines that are qualified for the world cup and 8 additional cuisines and a total of 1,373 observations. There are some key predictor columns which gets involved in this survey, they are: Knowledge (level of knowledge in food), Interest, Gender, Age, Household_income, Education and Location. Among these columns, except Gender and age, all other columns are of a type factor with multiple levels. Location and 40 cuisines are of the type character.
+     
+**Roles and Responsibilities:**
+      
+**Karthikeyan Senthil Kumar(19250526)**- devices the concepts, implementations and data visualization of Observations 1 and 2 and take part in report generation and documentation. 
+
+**Karthick Pandi(19250898)**- devices the concepts, implementations and data visualization of Observation 3 and take part in report generation and documentation.                   
+
+**Nishant Kumar(19251001)**- devices the concepts, implementations and data visualization of Observation 4 and had the responsibility of data cleaning process.
+
+**Marcio Antonio Cerqueira Lopes Filho(19253514)**- devices the concepts, implementations of Observation 5 and take part in report documentation.
+
+### Data Cleaning
+  Below are the codes which used for the implementation of the below observations. For these observations, we converted all the ratings columns from character type into Numeric type using lapply function and then we created a new column called Cusinestried which calculates the number cuisines tried by each candidate
+```{r,warning=FALSE,message=FALSE}
+library(fivethirtyeight)
+library(ggplot2)
+library(tidyverse)
+library(gridExtra)
+library(fivethirtyeight)
+
+fbconv<-as.data.frame(food_world_cup)
+fbconv[,9:48] <- lapply(fbconv[9:48],function(x) as.numeric(as.character(x)))
+fbconv[,9:48] <- lapply(fbconv[9:48],function(x) replace(x,is.na(x),0))
+fbconv$Cusinestried<-0
+fbconv$Cusinestried<-apply(fbconv[9:48],1,function(x) sum(x>0))
+```
+### Research {.tabset}
+
+#### Observation 1
+  With the given dataset, we decided to experiment about the Household_income Column which basically contains five ranges of salaries. Here the idea is, the more the income, the more one can spend, so with the help of this household_income column we decided to validate the assumption that the higher salaried people must have tried higher number of cuisines than others.  
+    
+```{r,warning=FALSE,message=FALSE}
+
+hig_sal<-subset(fbconv,fbconv$household_income == '$150,000+')
+med_sal<- subset(fbconv,fbconv$household_income == '$100,000 - $149,999')
+avg_sal<-subset(fbconv,fbconv$household_income == '$50,000 - $99,999')
+low_sal<-subset(fbconv,fbconv$household_income == '$25,000 - $49,999')
+l_sal<-subset(fbconv,fbconv$household_income == '$0 - $24,999')
+final1<-rbind(hig_sal,med_sal,avg_sal,low_sal,l_sal)
+
+ggplot(final1)+
+  geom_bar(aes(x=household_income,y=Cusinestried,fill=knowledge),stat="identity", na.rm =TRUE)+
+  scale_fill_brewer(palette="Dark2")+theme_minimal()+
+  coord_flip()+
+  ggtitle("Total Plot")
+```
+<br/>From the above Total plot, it is observed that the people having income range of $50,000 -$99,999 have tried the most number of cuisines, followed by the people with income range $25,000 -$49,999 then by $100,000 - $149,999, $150,000+, $0 - $24,999 respectively. The results of this plot does not support anything about the assumption mentioned early. It is because of the huge difference in the number people in each income categories. To eliminate this problem, we have decided to find out the average number of cuisines tried by the people belonging to each income category. 
+
+```{r,warning=FALSE,message=FALSE}
+means <- aggregate(Cusinestried ~  household_income, final1, mean)
+means$Cusinestried<-round(means$Cusinestried,digits = 2)
+
+ggplot(means,aes(reorder(household_income, Cusinestried), Cusinestried)) + 
+  geom_col(aes(fill = Cusinestried)) + 
+  geom_text(aes(label=Cusinestried),vjust=-0.2,color="red",size=4)+
+  theme_minimal()+
+  scale_fill_gradient(low = "lightblue1", high = "steelblue4")+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Average Plot")+
+  coord_flip()
+  
+
+
+```
+
+In this graph, it is observed that candidates belonging to highest salary range $150,000+ have tried the most number of cuisines with an average of 22.46 cuisines and the candidate belonging to the lowest salary range $0 - $24,999 have tried the least number of cuisines with an average of 16.09 cuisines. However we found an anomaly in between the salary ranges $25,000 - $49,999 and $50,000 - $99,999, as the average cuisines count of former category is slightly greater than the latter.
+
+#### Observation 2
+  In the previous observation, we validated the assumption that the more the income, the more the number of different cuisines tried by individuals. Here we made another assumption, one having the higher the knowledge about foods ended up trying higher number of cuisines. We tested the above mentioned theory for all the five household_income salary ranges.
+
+    
+```{r,warning=FALSE,message=FALSE}
+means1 <- aggregate(Cusinestried ~  knowledge, hig_sal, mean)
+means1$Cusinestried<-round(means1$Cusinestried,digits = 2)
+
+plot1<-ggplot(means1,aes(knowledge, Cusinestried)) +
+  geom_col(aes(fill = Cusinestried)) +
+  scale_fill_gradient2(low = "white", high = "red4") +
+  geom_text(aes(label=Cusinestried),vjust=1.5,color="white",size=3)+
+  theme_minimal()+
+  ggtitle("Income Range $150,000+")
+
+means2 <- aggregate(Cusinestried ~  knowledge, med_sal, mean)
+means2$Cusinestried<-round(means2$Cusinestried,digits = 2)
+
+plot2<-ggplot(means2,aes(knowledge, Cusinestried)) +
+  geom_col(aes(fill = Cusinestried)) +
+  scale_fill_gradient2(low = "white", high = "olivedrab4") +
+  geom_text(aes(label=Cusinestried),vjust=1.5,color="white",size=3)+
+  theme_minimal()+
+  ggtitle("Income Range $100,000 - $149,999")
+
+
+
+```
+```{r,warning=FALSE,message=FALSE}
+means3 <- aggregate(Cusinestried ~  knowledge, avg_sal, mean)
+means3$Cusinestried<-round(means3$Cusinestried,digits = 2)
+
+plot3<-ggplot(means3,aes(knowledge, Cusinestried)) +
+  geom_col(aes(fill = Cusinestried)) +
+  scale_fill_gradient2(low = "white", high = "plum4") +
+  geom_text(aes(label=Cusinestried),vjust=1.5,color="white",size=3)+
+  theme_minimal()+
+  ggtitle("Income Range $50,000 - $99,999")
+
+```
+<br/>
+
+```{r,warning=FALSE,message=FALSE}
+
+means4 <- aggregate(Cusinestried ~  knowledge, low_sal, mean)
+means4$Cusinestried<-round(means4$Cusinestried,digits = 2)
+
+plot4<-ggplot(means4,aes(knowledge, Cusinestried)) +
+  geom_col(aes(fill = Cusinestried)) +
+  scale_fill_gradient2(low = "white", high = "mediumorchid3")+  
+  geom_text(aes(label=Cusinestried),vjust=1.5,color="white",size=3)+
+  theme_minimal()+
+  ggtitle("Income Range $25,000 - $49,999")
+grid.arrange(plot1,plot2,plot3,plot4,ncol=2)
+```
+<br/>In the above four plots, we have plotted average cuisines tried VS knowledge category for all the income ranges. From the above four graphs, we can observe a similar trend  for income ranges $150,000+, $100,000 - $149,999, $50,000 - $99,999, $25,000 - $49,999  that on average, people having Expert knowledge have tried more number of cuisines followed by Advanced, Intermediate and Novice. This supports the assumption that people having high food knowledge have tried high number of cuisines then followed by the lower food knowledge people. 
+```{r,warning=FALSE,message=FALSE}
+means5 <- aggregate(Cusinestried ~  knowledge, l_sal, mean)
+means5$Cusinestried<-round(means5$Cusinestried,digits = 2)
+
+ggplot(means5,aes(knowledge, Cusinestried)) +
+  geom_col(aes(fill = Cusinestried)) +
+  scale_fill_gradient2(low = "white", high = "darkgoldenrod3") +
+  geom_text(aes(label=Cusinestried),vjust=-0.2,color="red",size=4)+
+  theme_minimal()+
+  ggtitle("Income Range $0 - $24,999")
+
+```
+<br/>In the average plot of cuisines tried VS knowledge category for the income range $0 - $24,999, we observed a different trend here which does not support the above mentioned assumption. Here,  Advanced food knowledge people have tried the most number of cuisines with an average of 28.75 then followed by Intermediate, Expert and Novice food knowledge people with an average 18.87, 14, 10.82 respectively.  
+ 
+#### Observation 3
+  
+  In this observation we are finding the Top 5 highest rated cuisines and Top 5 least rated cuisines and also we are finding gender ratio for the Top 5 highest rated cuisines and Top 5 least rated cuisines. 
+
+```{r,warning=FALSE,message=FALSE}
+RatingList<-apply(fbconv[9:48],2,function(x) sum(x))
+RatingList<-as.data.frame(RatingList)
+
+CountrNames<-row.names(RatingList)
+OverallList<-cbind(CountrNames,RatingList)
+row.names(OverallList)<-NULL
+OverallList<-OverallList[,1:2]
+TopFoods<-arrange(OverallList,desc(RatingList))
+
+
+
+```
+
+```{r,warning=FALSE,message=FALSE}
+
+TopPreferedCusines<-TopFoods[1:5,]
+TopPreferedCusines
+ggplot(data=TopPreferedCusines,aes(x=fct_reorder(CountrNames,desc(RatingList))
+                               ,y=RatingList,fill=CountrNames))+
+  geom_col()+
+  geom_text(aes(label=RatingList),vjust=0.1,colour="blue",size=4)+xlab("Country Names")+ylab("Rating")+ggtitle("Top 5 Rated Cusines")+ theme(axis.text.x=element_blank())
+```
+  
+  From the above result we can conclude that Italian Cusines which contains an highest rating value of 5232 are mostly prefered by the people.The Second most position is secured by The united States Cusines with the total rating value of 4954.Mexico,China and France placed their positions followed up by United States with their gradual decreasing Rating values in the Top Prefered Cusines list.
+
+```{r,warning=FALSE,message=FALSE}
+LeastPreferedCusines<-TopFoods[36:40,]
+LeastPreferedCusines
+ggplot(data=LeastPreferedCusines,aes(x=fct_reorder(CountrNames,(RatingList))
+                                   ,y=RatingList,fill=CountrNames))+
+  geom_col()+
+  geom_text(aes(label=RatingList),vjust=0.1,colour="blue",size=4)+xlab("Country Names")+ylab("Rating")+ggtitle("Least 5 Rated Cusines")+ theme(axis.text.x=element_blank())
+
+```
+  
+  These are lower rated  cusines which are rarely prefered by the people who gets involved in this survey.Ivory Coast cusines are the least prefered cusines when compared to all other 39 different countries cusines.
+     
+```{r,warning=FALSE,message=FALSE}
+PreferedByMale<-filter(fbconv,gender=='Male')
+PreferedByFemale<-filter(fbconv,gender=='Female')
+
+Ratings<-apply(PreferedByMale[9:48],2,function(x) sum(x))
+MaleRatings_df<-as.data.frame(Ratings)
+Ratings<-apply(PreferedByFemale[9:48],2,function(x) sum(x))
+FemaleRatings_df<-as.data.frame(Ratings)
+
+
+FemaleRatings_df<-mutate(FemaleRatings_df,CountrNames,gender='Female')
+MaleRatings_df<-mutate(MaleRatings_df,CountrNames,gender='Male')
+
+MaleRatings_df<-select(MaleRatings_df,CountrNames,Ratings,gender)
+FemaleRatings_df<-select(FemaleRatings_df,CountrNames,Ratings,gender)
+
+GenderBasedRatings<-rbind(MaleRatings_df,FemaleRatings_df)
+Top5Cusines_Gender<-filter(GenderBasedRatings,
+GenderBasedRatings$CountrNames == 'italy' |GenderBasedRatings$CountrNames == 'united_states'|
+  GenderBasedRatings$CountrNames  == 'mexico' |
+  GenderBasedRatings$CountrNames  == 'china'|GenderBasedRatings$CountrNames  == 'france')
+ggplot(data = Top5Cusines_Gender) +
+  geom_bar(mapping = aes(x = CountrNames,y=Ratings,fill=gender),stat='Identity')+xlab("Country Names")+ylab("Rating")+ggtitle("Gender Plot for Top 5 Rated Cusines")
+
+
+
+Least5Cusines_Gender<-filter(GenderBasedRatings,
+                           GenderBasedRatings$CountrNames == 'nigeria' |GenderBasedRatings$CountrNames == 'bosnia_and_herzegovina'|
+                             GenderBasedRatings$CountrNames  == 'ghana' |
+                             GenderBasedRatings$CountrNames  == 'cameroon'|GenderBasedRatings$CountrNames  == 'ivory_coast')
+
+ggplot(data = Least5Cusines_Gender) +
+  geom_bar(mapping = aes(x = CountrNames,y=Ratings,fill=gender),stat='Identity')+xlab("Country Names")+ylab("Rating")+ggtitle("Gender Plot for Least 5 Rated Cusines")
+```
+  
+  
+  By observing the above two graph we can infer that the top5 Cuisines are rated more by Female than Male. It is clear from the second graph that Male has rated more than Female in the Least 5 Preferred Cuisines. So, we can conclude that Male has tried these cuisines more than females.
+
+#### Observation 4
+
+  In this observation, we are finding which age category of both genders have tried most number of cuisines.
+    
+```{r,warning=FALSE,message=FALSE}
+
+maleage<-subset(fbconv,fbconv$gender == 'Male')
+femaleage<-subset(fbconv,fbconv$gender == 'Female')
+counts6<- aggregate(Cusinestried ~  age, maleage,sum)
+ggplot(counts6,aes(age,Cusinestried))+
+geom_col(aes(fill = Cusinestried))+
+theme_minimal()+scale_fill_gradient2(low = "white", high = "steelblue4") +
+geom_text(aes(label=Cusinestried),vjust=-0.2,color="red",size=5)+
+ggtitle("Male age plot")
+
+counts7<- aggregate(Cusinestried ~  age, femaleage,sum)
+
+ggplot(counts7,aes(age,Cusinestried))+geom_col(aes(fill = Cusinestried))+
+theme_minimal()+scale_fill_gradient2(low = "white", high = "deeppink3") +
+geom_text(aes(label=Cusinestried),vjust=-0.2,color="red",size=5)+ggtitle("Female Age plot")
+
+```
+  From the above plots, it is observed that Male belongs to the age category 45-60 have tried most number of cuisines with a total of 3337 cuisines followed by the age category 30-44, >60, 18-29 with a total of 2822, 2744, 2271 cuisines respectively. Whereas in Female candidates the age category >60 have tried the most number of cuisines with a total of 3500 cuisines then followed by the age category 30-44, 45-60, 18-29 with a total of 3186, 3134, 2315 respectively.
+
+
+#### Observation 5
+  Our goal with the research was to evaluate the impact of some foreigner cultures in the score for this dataset. In wikipedia we discovered that 3 biggest foreigner cultures were Mexico, China and India in the USA. And they are majorly located in:  For Mexico, West South Central, Pacific and Mountains; For China, Pacific region; And for India, Pacific and Middle Atlantic. So, we have made a t-test which compares the average score for the selected areas the average score from the other regions.
+  Ho: µnf = µf        Ha: µnf < µf      (f for foreigner; nf for non foreigner.)
+```{r,warning=FALSE,message=FALSE}
+arag <- food_world_cup
+arag$location <- as.factor(arag$location)
+arag[arag == "N/A"] <- NA
+arag[,9:48] <- lapply(arag[9:48],function(x) as.numeric(as.character(x)))
+`%notin%` <- Negate(`%in%`)
+adjcountry <- function(x,y){ # Function for picking in the dataset country(x) and region(y)
+  local<- subset(arag, location %in% y, select = x)
+  return(na.omit(local))
+}
+adjgen <- function(x,y){ #Function to get the rest of the dataset without the regions
+  gene <- subset(arag, location %notin% y, select = x)
+  return(na.omit(gene))
+}
+levels(arag$location)
+
+country <- "mexico"
+area <- c("West South Central","Pacific","Mountain")
+loc<- adjcountry(country, area)
+gen <- adjgen(country, area)
+
+
+#H0: µ1 = µ2
+#H1: µ1 < µ2
+t.test(unlist(gen), unlist(loc),  alternative = "less")
+
+country <- "china"
+area <- c("Pacific")
+loc<- adjcountry(country, area)
+gen <- adjgen(country, area)
+t.test(unlist(gen), unlist(loc),  alternative = "less")
+
+
+country <- "india"
+area <- c("Pacific","Middle Atlantic")
+loc<- adjcountry(country, area)
+gen <- adjgen(country, area)
+t.test(unlist(gen), unlist(loc),  alternative = "less")
+
+```
+<br/>For each country he have very small p-values (smaller than .05), except for China, which means that the difference is significant in those scores compared with the scores from regions with less intensive immigration process. That concludes we are 95% confident that the scores from regions with more immigrants from that particular country have higher scores. To summarize the impact of immigration in the scores is real.  For China we fail to refute the null hypothesis, which means that we cannot say that the impact of immigration in the selected areas is significant. We suppose that this impact is related with the originality of their food. Areas with more immigrants are expected to have the most authentic food from their native countries, and this authenticity is translated in better scores. Overall we are satisfied with the results.
+
+### Conclusion
+  Based on the given Food_world_cup dataset from the package FiveThirtyEight, we have performed 5 observations which helped us understand the given dataset.
+    
+  **Observation 1**- From the Average plot, it is clear that the more the income, the more the cuisines tried by the individuals. From the average plot, it is observed that candidates belonging to highest salary range $150,000+ have tried the most number of cuisines with an average of 22.46 cuisines and the candidate belonging to the lowest salary range $0 - $24,999 have tried the least number of cuisines with an average of 16.09 cuisines. However we found an anomaly in between the salary ranges $25,000 - $49,999 an $50,000 - $99,999 as the average cuisines count of former category is slightly greater than the latter.
+    
+  **Observation 2**- From the Average plot, we can understand that the more the knowledge, the more the cuisines tried. It is proved from the average plots of highest 4 salary income ranges, here we observed a trend that most number of cuisines tried is the candidates having Expert knowledge followed by Advanced, Intermediate and Novice respectively. But in the least salary range, we observed an anomaly the trend followed here is Advanced, Intermediate, Expert and Novice.
+    
+  **Observation 3**- From this observation we found the top 5 highest rated cuisines and top 5 least rated cuisines. The top 5 rated cuisines are Italy, United States, Mexico, China and France. The top5 least rated cuisines are Ivory Coast, Cameroon, Ghana, Bosnia and Nigeria. For these two data, we have plotted gender plot to determine the gender ratings. In the top 5 highest rated cuisines , we found out that Female have rated more than Male, on the other hand, in the top 5 least rated cuisines, Male have rated more than Female.
+    
+  **Observation 4**-From this observation, we found which age category in both genders have tried most number of cuisines in the given dataset. In the gender Male, who age is between 45-60 have tried more number cuisines and candidates who age is between 18-29 have tried the least number of cuisines. For the gender Female, candidate belongs to age >60 have tried more cuisines and age between 18-29 have tried the least number of cuisines.
+    
+  **Observation 5**-In this observation, we used Wikipedia from which we got highest migrated foreign nations (Mexicans, Chinese and Indians) in USA and their settled regions. Our idea is to find the impact of foreigner cultures in the given dataset. So, we have made a t-test which compares the average score for the selected areas the average score from the other regions. With the scores we can conclude that we are 95% confident that the scores from regions with more immigrants from that particular country have higher scores. To summarize the impact of immigration in the scores is real except for China.
